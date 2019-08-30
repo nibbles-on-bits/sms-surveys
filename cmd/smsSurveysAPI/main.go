@@ -12,6 +12,7 @@ import (
 	"sms-surveys/internal/customer"
 	"sms-surveys/internal/database/sqlite3"
 	"sms-surveys/internal/env"
+	"sms-surveys/internal/survey"
 
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
@@ -48,16 +49,8 @@ func main() {
 	fmt.Printf("TwilioSID = %s\n", TwilioSID)
 	fmt.Printf("TwilioToken = %s\n", TwilioToken)
 
-	// if TwilioSID == "" {
-	// 	Logger.Panic("environment variable : TWILIO_SID not set")
-	// }
-
-	// if TwilioToken == "" {
-	// 	Logger.Panic("environment variable : TWILIO_TOKEN not set")
-	// }
-
 	var CustomerRepo customer.CustomerRepository
-	//var SmsReminderRepo smsreminder.SmsReminderRepository
+	var SurveyRepo survey.SurveyRepository
 
 	go func() {
 		c := make(chan os.Signal, 1)
@@ -75,9 +68,15 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer db.Close()
+
 		statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS customer (id TEXT PRIMARY KEY, last_name TEXT, first_name TEXT, phone TEXT, created_time INTEGER, updated_time INTEGER, deleted_time INTEGER)")
 		statement.Exec()
-		defer db.Close()
+		statement, _ = db.Prepare("CREATE TABLE IF NOT EXISTS survey (id TEXT PRIMARY KEY, description TEXT, from_ph_num TEXT, to_ph_num TEXT, flow_params TEXT, created_time INTEGER, updated_time INTEGER, deleted_time INTEGER)")
+		statement.Exec()
+
+		
+		SurveyRepo = sqlite3.NewSqlite3SurveyRepository(db)
 		CustomerRepo = sqlite3.NewSqlite3CustomerRepository(db)
 	default:
 		panic("Unknown database")
@@ -85,16 +84,18 @@ func main() {
 
 	CustomerService := customer.NewCustomerService(CustomerRepo)
 	CustomerHandler := customer.NewCustomerHandler(CustomerService)
+	SurveyService := survey.NewSurveyService(SurveyRepo)
+	SurveyHandler := survey.NewSurveyHandler(SurveyService)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/customers", CustomerHandler.Get).Methods("GET")
 	router.HandleFunc("/customers/{id}", CustomerHandler.GetByID).Methods("GET")
 	router.HandleFunc("/customers/{id}", CustomerHandler.DeleteByID).Methods("DELETE")
 	router.HandleFunc("/customers", CustomerHandler.Create).Methods("POST")
-	/*router.HandleFunc("/surveys", SmsReminderHandler.Get).Methods("GET")
-	router.HandleFunc("/surveys/{id}", SmsReminderHandler.GetByID).Methods("GET")
-	router.HandleFunc("/surveys/{id}", SmsReminderHandler.DeleteByID).Methods("DELETE")
-	router.HandleFunc("/surveys", SmsReminderHandler.Create).Methods("POST")*/
+	router.HandleFunc("/surveys", SurveyHandler.Get).Methods("GET")
+	router.HandleFunc("/surveys/{id}", SurveyHandler.GetByID).Methods("GET")
+	router.HandleFunc("/surveys/{id}", SurveyHandler.DeleteByID).Methods("DELETE")
+	router.HandleFunc("/surveys", SurveyHandler.Create).Methods("POST")
 
 	errs := make(chan error, 2)
 
