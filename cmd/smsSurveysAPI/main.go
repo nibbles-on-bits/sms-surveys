@@ -29,7 +29,7 @@ const (
 	DefaultPostgresHost     = "db"
 	DefaultPostgresPort     = "5432"
 	DefaultPostgresPassword = "example"
-	DefaultPostgresDBName   = "smsreminders_microservice_db"
+	DefaultPostgresDBName   = "customer"
 
 	DefaultSqlite3File = "./sms-surveys.db"
 )
@@ -75,7 +75,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS customer (id TEXT PRIMARY KEY, lat_name TEXT, first_name TEXT, phone TEXT, created_time INTEGER, updated_time INTEGER, deleted_time INTEGER, processing BOOL)")
+		statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS customer (id TEXT PRIMARY KEY, last_name TEXT, first_name TEXT, phone TEXT, created_time INTEGER, updated_time INTEGER, deleted_time INTEGER)")
 		statement.Exec()
 		defer db.Close()
 		CustomerRepo = sqlite3.NewSqlite3CustomerRepository(db)
